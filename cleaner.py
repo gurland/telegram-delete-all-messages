@@ -29,6 +29,8 @@ class Cleaner:
         for i, group in enumerate(groups):
             print(f'{i+1}. {group.chat.title}')
 
+        print('')
+
         group_n = int(input('Insert group number: '))
         selected_group = groups[group_n - 1]
 
