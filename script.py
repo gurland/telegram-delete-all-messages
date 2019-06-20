@@ -36,7 +36,7 @@ class Cleaner:
         self.peer = selected_group_peer
         self.chat_id = selected_group.chat.id
 
-        print(f'Selected {selected_group.chat.title}')
+        print(f'Selected {selected_group.chat.title}\n')
 
         return selected_group, selected_group_peer
 
