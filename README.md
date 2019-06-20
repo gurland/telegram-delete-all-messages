@@ -2,7 +2,7 @@
 Delete all your messages in supergroups with python script.
 
 ## Installation
-To install this script you have to download project and install requirements by typing:
+To install this script you have to download project and install requirements:
 
 ### Linux
 ```
@@ -13,6 +13,7 @@ python cleaner.py
 ```
 
 ### Windows
+- Download zip file from this repo and unpack it
 - Install latest [CPython 3](https://www.python.org) version
 - Run install.bat
 - Run start.bat
@@ -48,7 +49,7 @@ Logged in successfully as Stanislav
 ```
 
 #### Choosing supergroup
-- After providing needed information you'll get your supergroup dialogs
+- After providing needed information you will get your supergroup dialogs
 - Enter number found near desired supergroup title
 ```
 1. Python community
@@ -59,7 +60,7 @@ Insert group number:
 ```
 
 #### Message removal process
-- After choosing supergroup you'd get informed about removal messages process
+- After choosing supergroup you would get informed about messages removal process
 ```
 Insert group number: 2
 Selected Rust Beginners
