@@ -9,7 +9,7 @@ from pyrogram.errors import FloodWait, UnknownError
 
 
 API_ID = getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
-API_HASH = getenv('API_ID', None) or int(input('Enter your Telegram API hash: '))
+API_HASH = getenv('API_ID', None) or input('Enter your Telegram API hash: ')
 
 app = Client("client", api_id=API_ID, api_hash=API_HASH)
 app.start()
