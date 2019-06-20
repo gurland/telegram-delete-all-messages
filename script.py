@@ -57,7 +57,6 @@ class Cleaner:
                 self.add_offset += 100
 
         self.delete_messages()
-        app.stop()
 
     @staticmethod
     def chunks(l, n):
