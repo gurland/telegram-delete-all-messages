@@ -1,0 +1,2 @@
+pyrogram
+tgcrypto # Optional, for faster cleaning. You could remove this line
