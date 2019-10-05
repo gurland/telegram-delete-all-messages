@@ -24,7 +24,8 @@ class Cleaner:
 
     def select_supergroup(self):
         dialogs = app.get_dialogs()
-        groups = [x for x in dialogs.dialogs if x.chat.type == 'supergroup']
+        print(dialogs)
+        groups = [x for x in dialogs if x.chat.type == 'supergroup']
 
         for i, group in enumerate(groups):
             print(f'{i+1}. {group.chat.title}')
@@ -74,11 +75,13 @@ class Cleaner:
         return len(query.messages)
 
     def delete_messages(self):
-        print(f'Deleting {len(self.message_ids)} messages with next message IDs:')
+        print(
+            f'Deleting {len(self.message_ids)} messages with next message IDs:')
         print(self.message_ids)
         for message_ids_chunk in self.chunks(self.message_ids, 100):
             try:
-                app.delete_messages(chat_id=self.chat_id, message_ids=message_ids_chunk)
+                app.delete_messages(chat_id=self.chat_id,
+                                    message_ids=message_ids_chunk)
             except FloodWait as flood_exception:
                 sleep(flood_exception.x)
 
