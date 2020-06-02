@@ -9,7 +9,7 @@ from pyrogram.errors import FloodWait, UnknownError
 
 
 API_ID = getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
-API_HASH = getenv('API_ID', None) or input('Enter your Telegram API hash: ')
+API_HASH = getenv('API_HASH', None) or input('Enter your Telegram API hash: ')
 
 app = Client("client", api_id=API_ID, api_hash=API_HASH)
 app.start()
@@ -21,10 +21,24 @@ class Cleaner:
         self.chat_id = chat_id
         self.message_ids = []
         self.add_offset = 0
+        self.group_type = ''
 
     def select_supergroup(self):
         dialogs = app.get_dialogs()
-        groups = [x for x in dialogs if x.chat.type == 'supergroup']
+
+        print('1. Supergroup\n2. (non super)Group')
+        group_type_n = int(input('Insert group type: '))
+        print('')
+
+        if group_type_n == 1:
+            self.group_type = 'supergroup'
+        elif group_type_n == 2:
+            self.group_type = 'group'
+        else:
+            print('Invalid group type. Exiting..')
+            exit()
+
+        groups = [x for x in dialogs if x.chat.type == self.group_type ]
 
         for i, group in enumerate(groups):
             print(f'{i+1}. {group.chat.title}')
@@ -45,8 +59,12 @@ class Cleaner:
     def run(self):
         q = self.search_messages()
         self.update_ids(q)
-        messages_count = q.count
-        print(f'Found {messages_count} your messages in selected supergroup')
+
+        if self.group_type == 'group':
+            messages_count = len(q["messages"])
+        else:
+            messages_count = q.count
+        print(f'Found {messages_count} your messages in selected %s' %self.group_type)
 
         if messages_count < 100:
             pass
