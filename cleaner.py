@@ -24,7 +24,7 @@ class Cleaner:
         self.group_type = ''
 
     def select_supergroup(self):
-        dialogs = app.get_dialogs()
+        dialogs = app.get_dialogs(pinned_only=True) + app.get_dialogs()
 
         print('1. Supergroup\n2. (non super)Group')
         group_type_n = int(input('Insert group type: '))
