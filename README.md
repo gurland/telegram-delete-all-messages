@@ -28,7 +28,7 @@ python cleaner.py
 > You need both App api_id and App api_hash to use script.
 
 #### Environment variables
-You could set APP_ID and APP_HASH environment variables to prevent entering API credentials manually.
+You could set API_ID and API_HASH environment variables to prevent entering API credentials manually.
 
 #### Start
 After starting script you will be prompted:
