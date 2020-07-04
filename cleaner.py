@@ -42,21 +42,22 @@ class Cleaner:
         return dialogs
 
     def select_supergroup(self):
+        group_types = {
+            '1': 'supergroup',
+            '2': 'group'
+        }
+
         dialogs = self.get_all_dialogs()
 
-        print('1. Supergroup\n2. (non super)Group')
-        group_type_n = int(input('Insert group type: '))
+        print('\n'.join((f'{i}. {name.capitalize()}' for i, name in group_types.items())))
+        try:
+            self.group_type = group_types[input('Insert group type number: ')]
+        except KeyError:
+            print('Invalid group type. Exiting..')
+            exit(-1)
         print('')
 
-        if group_type_n == 1:
-            self.group_type = 'supergroup'
-        elif group_type_n == 2:
-            self.group_type = 'group'
-        else:
-            print('Invalid group type. Exiting..')
-            exit()
-
-        groups = [x for x in dialogs if x.chat.type == self.group_type ]
+        groups = [x for x in dialogs if x.chat.type == self.group_type]
 
         for i, group in enumerate(groups):
             print(f'{i+1}. {group.chat.title}')
@@ -64,6 +65,10 @@ class Cleaner:
         print('')
 
         group_n = int(input('Insert group number: '))
+        if group_n not in range(1, len(groups)+1):
+            print('Invalid group number. Exiting...')
+            exit(-1)
+
         selected_group = groups[group_n - 1]
 
         selected_group_peer = app.resolve_peer(selected_group.chat.id)
