@@ -23,8 +23,26 @@ class Cleaner:
         self.add_offset = 0
         self.group_type = ''
 
+    @staticmethod
+    def chunks(l, n):
+        """Yield successive n-sized chunks from l.
+        https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks#answer-312464"""
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    @staticmethod
+    def get_all_dialogs():
+        dialogs = app.get_dialogs(pinned_only=True)
+
+        dialog_chunk = app.get_dialogs()
+        while len(dialog_chunk) > 0:
+            dialogs.extend(dialog_chunk)
+            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date)
+
+        return dialogs
+
     def select_supergroup(self):
-        dialogs = app.get_dialogs(pinned_only=True) + app.get_dialogs()
+        dialogs = self.get_all_dialogs()
 
         print('1. Supergroup\n2. (non super)Group')
         group_type_n = int(input('Insert group type: '))
@@ -78,13 +96,6 @@ class Cleaner:
 
         self.delete_messages()
 
-    @staticmethod
-    def chunks(l, n):
-        """Yield successive n-sized chunks from l.
-        https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks#answer-312464"""
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
     def update_ids(self, query: ChannelMessages):
         for msg in query.messages:
             self.message_ids.append(msg.id)
@@ -92,8 +103,7 @@ class Cleaner:
         return len(query.messages)
 
     def delete_messages(self):
-        print(
-            f'Deleting {len(self.message_ids)} messages with next message IDs:')
+        print(f'Deleting {len(self.message_ids)} messages with next message IDs:')
         print(self.message_ids)
         for message_ids_chunk in self.chunks(self.message_ids, 100):
             try:
