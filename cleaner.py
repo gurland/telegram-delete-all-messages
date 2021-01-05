@@ -2,9 +2,9 @@ from time import sleep
 from os import getenv
 
 from pyrogram import Client
-from pyrogram.api.functions.messages import Search
-from pyrogram.api.types import InputPeerSelf, InputMessagesFilterEmpty
-from pyrogram.api.types.messages import ChannelMessages
+from pyrogram.raw.functions.messages import Search
+from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
+from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
 
@@ -94,10 +94,10 @@ class Cleaner:
         else:
             self.add_offset = 100
 
-            for i in range(0, messages_count, 100):
+            for i in range(0, messages_count, 1000):
                 q = self.search_messages()
                 self.update_ids(q)
-                self.add_offset += 100
+                self.add_offset += 1000
 
         self.delete_messages()
 
