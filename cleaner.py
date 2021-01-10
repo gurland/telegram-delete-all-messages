@@ -94,10 +94,10 @@ class Cleaner:
         else:
             self.add_offset = 100
 
-            for i in range(0, messages_count, 100):
+            for i in range(0, messages_count, 1000):
                 q = self.search_messages()
                 self.update_ids(q)
-                self.add_offset += 100
+                self.add_offset += 1000
 
         self.delete_messages()
 
