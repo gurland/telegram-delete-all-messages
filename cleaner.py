@@ -2,9 +2,9 @@ from time import sleep
 from os import getenv
 
 from pyrogram import Client
-from pyrogram.api.functions.messages import Search
-from pyrogram.api.types import InputPeerSelf, InputMessagesFilterEmpty
-from pyrogram.api.types.messages import ChannelMessages
+from pyrogram.raw.functions.messages import Search
+from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
+from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
 
