@@ -83,7 +83,7 @@ class Cleaner:
         while True:
             q = self.search_messages()
             self.update_ids(q)
-            messages_count = len(q['messages']) if self.group_type == 'group' else q.count
+            messages_count = len(q['messages'])
             print(f'Found {messages_count} of your messages in selected {self.group_type}')
             if messages_count < 100:
                 break
