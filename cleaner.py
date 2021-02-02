@@ -80,24 +80,14 @@ class Cleaner:
         return selected_group, selected_group_peer
 
     def run(self):
-        q = self.search_messages()
-        self.update_ids(q)
-
-        if self.group_type == 'group':
-            messages_count = len(q["messages"])
-        else:
-            messages_count = q.count
-        print(f'Found {messages_count} your messages in selected %s' %self.group_type)
-
-        if messages_count < 100:
-            pass
-        else:
-            self.add_offset = 100
-
-            for i in range(0, messages_count, 1000):
-                q = self.search_messages()
-                self.update_ids(q)
-                self.add_offset += 1000
+        while True:
+            q = self.search_messages()
+            self.update_ids(q)
+            messages_count = len(q['messages']) if self.group_type == 'group' else q.count
+            print(f'Found {messages_count} of your messages in selected {self.group_type}')
+            if messages_count < 100:
+                break
+            self.add_offset += 100
 
         self.delete_messages()
 
@@ -108,7 +98,7 @@ class Cleaner:
         return len(query.messages)
 
     def delete_messages(self):
-        print(f'Deleting {len(self.message_ids)} messages with next message IDs:')
+        print(f'Deleting {len(self.message_ids)} messages with message IDs:')
         print(self.message_ids)
         for message_ids_chunk in self.chunks(self.message_ids, 100):
             try:
