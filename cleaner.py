@@ -16,9 +16,10 @@ app.start()
 
 
 class Cleaner:
-    def __init__(self, peer=None, chat_id=None):
+    def __init__(self, peer=None, chat_id=None, search_limit=1000):
         self.peer = peer
         self.chat_id = chat_id
+        self.search_limit = search_limit
         self.message_ids = []
         self.add_offset = 0
         self.group_type = ''
@@ -85,9 +86,9 @@ class Cleaner:
             self.update_ids(q)
             messages_count = len(q['messages'])
             print(f'Found {messages_count} of your messages in selected {self.group_type}')
-            if messages_count < 1000:
+            if messages_count < self.search_limit:
                 break
-            self.add_offset += 1000
+            self.add_offset += self.search_limit
 
         self.delete_messages()
 
@@ -118,7 +119,7 @@ class Cleaner:
                 max_date=0,
                 offset_id=0,
                 add_offset=self.add_offset,
-                limit=1000,
+                limit=self.search_limit,
                 max_id=0,
                 min_id=0,
                 hash=0,
