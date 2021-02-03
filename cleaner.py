@@ -85,9 +85,9 @@ class Cleaner:
             self.update_ids(q)
             messages_count = len(q['messages'])
             print(f'Found {messages_count} of your messages in selected {self.group_type}')
-            if messages_count < 100:
+            if messages_count < 1000:
                 break
-            self.add_offset += 100
+            self.add_offset += 1000
 
         self.delete_messages()
 
@@ -118,7 +118,7 @@ class Cleaner:
                 max_date=0,
                 offset_id=0,
                 add_offset=self.add_offset,
-                limit=100,
+                limit=1000,
                 max_id=0,
                 min_id=0,
                 hash=0,
