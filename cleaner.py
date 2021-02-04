@@ -16,9 +16,10 @@ app.start()
 
 
 class Cleaner:
-    def __init__(self, peer=None, chat_id=None):
+    def __init__(self, peer=None, chat_id=None, search_limit=1000):
         self.peer = peer
         self.chat_id = chat_id
+        self.search_limit = search_limit
         self.message_ids = []
         self.add_offset = 0
         self.group_type = ''
@@ -80,24 +81,14 @@ class Cleaner:
         return selected_group, selected_group_peer
 
     def run(self):
-        q = self.search_messages()
-        self.update_ids(q)
-
-        if self.group_type == 'group':
-            messages_count = len(q["messages"])
-        else:
-            messages_count = q.count
-        print(f'Found {messages_count} your messages in selected %s' %self.group_type)
-
-        if messages_count < 100:
-            pass
-        else:
-            self.add_offset = 100
-
-            for i in range(0, messages_count, 1000):
-                q = self.search_messages()
-                self.update_ids(q)
-                self.add_offset += 1000
+        while True:
+            q = self.search_messages()
+            self.update_ids(q)
+            messages_count = len(q['messages'])
+            print(f'Found {messages_count} of your messages in selected {self.group_type}')
+            if messages_count < self.search_limit:
+                break
+            self.add_offset += self.search_limit
 
         self.delete_messages()
 
@@ -108,7 +99,7 @@ class Cleaner:
         return len(query.messages)
 
     def delete_messages(self):
-        print(f'Deleting {len(self.message_ids)} messages with next message IDs:')
+        print(f'Deleting {len(self.message_ids)} messages with message IDs:')
         print(self.message_ids)
         for message_ids_chunk in self.chunks(self.message_ids, 100):
             try:
@@ -128,7 +119,7 @@ class Cleaner:
                 max_date=0,
                 offset_id=0,
                 add_offset=self.add_offset,
-                limit=100,
+                limit=self.search_limit,
                 max_id=0,
                 min_id=0,
                 hash=0,
