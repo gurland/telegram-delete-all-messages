@@ -22,7 +22,6 @@ class Cleaner:
         self.search_limit = search_limit
         self.message_ids = []
         self.add_offset = 0
-        self.group_type = ''
 
     @staticmethod
     def chunks(l, n):
@@ -42,23 +41,9 @@ class Cleaner:
 
         return dialogs
 
-    def select_supergroup(self):
-        group_types = {
-            '1': 'supergroup',
-            '2': 'group'
-        }
-
+    def select_group(self):
         dialogs = self.get_all_dialogs()
-
-        print('\n'.join((f'{i}. {name.capitalize()}' for i, name in group_types.items())))
-        try:
-            self.group_type = group_types[input('Insert group type number: ')]
-        except KeyError:
-            print('Invalid group type. Exiting..')
-            exit(-1)
-        print('')
-
-        groups = [x for x in dialogs if x.chat.type == self.group_type]
+        groups = [d for d in dialogs if d.chat.type in ('group', 'supergroup')]
 
         for i, group in enumerate(groups):
             print(f'{i+1}. {group.chat.title}')
@@ -85,7 +70,7 @@ class Cleaner:
             q = self.search_messages()
             self.update_ids(q)
             messages_count = len(q['messages'])
-            print(f'Found {messages_count} of your messages in selected {self.group_type}')
+            print(f'Found {messages_count} of your messages in selected group')
             if messages_count < self.search_limit:
                 break
             self.add_offset += self.search_limit
@@ -131,7 +116,7 @@ class Cleaner:
 if __name__ == '__main__':
     try:
         deleter = Cleaner()
-        deleter.select_supergroup()
+        deleter.select_group()
         deleter.run()
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
