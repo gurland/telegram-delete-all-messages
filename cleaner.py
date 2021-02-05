@@ -16,12 +16,9 @@ app.start()
 
 
 class Cleaner:
-    def __init__(self, peer=None, chat_id=None, search_limit=1000):
-        self.peer = peer
-        self.chat_id = chat_id
+    def __init__(self, chats=None, search_limit=1000):
+        self.chats = chats or []
         self.search_limit = search_limit
-        self.message_ids = []
-        self.add_offset = 0
 
     @staticmethod
     def chunks(l, n):
@@ -31,7 +28,7 @@ class Cleaner:
             yield l[i:i + n]
 
     @staticmethod
-    def get_all_dialogs():
+    def get_all_chats():
         dialogs = app.get_dialogs(pinned_only=True)
 
         dialog_chunk = app.get_dialogs()
@@ -39,71 +36,65 @@ class Cleaner:
             dialogs.extend(dialog_chunk)
             dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date)
 
-        return dialogs
+        return [d.chat for d in dialogs]
 
-    def select_group(self):
-        dialogs = self.get_all_dialogs()
-        groups = [d for d in dialogs if d.chat.type in ('group', 'supergroup')]
+    def select_groups(self):
+        chats = self.get_all_chats()
+        groups = [c for c in chats if c.type in ('group', 'supergroup')]
 
+        print('Delete all your messages in')
         for i, group in enumerate(groups):
-            print(f'{i+1}. {group.chat.title}')
+            print(f'  {i+1}. {group.title}')
+        print(f'  {len(groups) + 1}. (!) ALL OF THE ABOVE (!)\n')
 
-        print('')
-
-        group_n = int(input('Insert group number: '))
-        if group_n not in range(1, len(groups)+1):
-            print('Invalid group number. Exiting...')
+        n = int(input('Insert option number: '))
+        if not 1 <= n <= len(groups) + 1:
+            print('Invalid option selected. Exiting...')
             exit(-1)
 
-        selected_group = groups[group_n - 1]
-
-        selected_group_peer = app.resolve_peer(selected_group.chat.id)
-        self.peer = selected_group_peer
-        self.chat_id = selected_group.chat.id
-
-        print(f'Selected {selected_group.chat.title}\n')
-
-        return selected_group, selected_group_peer
+        self.chats = groups if n == len(groups) + 1 else [groups[n - 1]]
+ 
+        print(f'\nSelected {", ".join(c.title for c in self.chats)}.\n')
 
     def run(self):
-        while True:
-            q = self.search_messages()
-            self.update_ids(q)
-            messages_count = len(q['messages'])
-            print(f'Found {messages_count} of your messages in selected group')
-            if messages_count < self.search_limit:
-                break
-            self.add_offset += self.search_limit
+        for chat in self.chats:
+            peer = app.resolve_peer(chat.id)
+            message_ids = []
+            add_offset = 0
 
-        self.delete_messages()
+            while True:
+                q = self.search_messages(peer, add_offset)
+                message_ids.extend(msg.id for msg in q['messages'])
+                messages_count = len(q['messages'])
+                print(f'Found {messages_count} of your messages in "{chat.title}"')
+                if messages_count < self.search_limit:
+                    break
+                add_offset += self.search_limit
 
-    def update_ids(self, query: ChannelMessages):
-        for msg in query.messages:
-            self.message_ids.append(msg.id)
+            self.delete_messages(chat.id, message_ids)
 
-        return len(query.messages)
-
-    def delete_messages(self):
-        print(f'Deleting {len(self.message_ids)} messages with message IDs:')
-        print(self.message_ids)
-        for message_ids_chunk in self.chunks(self.message_ids, 100):
+    def delete_messages(self, chat_id, message_ids):
+        print(f'Deleting {len(message_ids)} messages with message IDs:')
+        print(message_ids)
+        for message_ids_chunk in self.chunks(message_ids, 100):
             try:
-                app.delete_messages(chat_id=self.chat_id,
-                                    message_ids=message_ids_chunk)
+                app.delete_messages(
+                    chat_id=chat_id,
+                    message_ids=message_ids_chunk)
             except FloodWait as flood_exception:
                 sleep(flood_exception.x)
 
-    def search_messages(self):
-        print(f'Searching messages. OFFSET: {self.add_offset}')
+    def search_messages(self, peer, add_offset):
+        print(f'Searching messages. OFFSET: {add_offset}')
         return app.send(
             Search(
-                peer=self.peer,
+                peer=peer,
                 q='',
                 filter=InputMessagesFilterEmpty(),
                 min_date=0,
                 max_date=0,
                 offset_id=0,
-                add_offset=self.add_offset,
+                add_offset=add_offset,
                 limit=self.search_limit,
                 max_id=0,
                 min_id=0,
@@ -116,7 +107,7 @@ class Cleaner:
 if __name__ == '__main__':
     try:
         deleter = Cleaner()
-        deleter.select_group()
+        deleter.select_groups()
         deleter.run()
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
