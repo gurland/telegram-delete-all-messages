@@ -16,9 +16,10 @@ app.start()
 
 
 class Cleaner:
-    def __init__(self, chats=None, search_limit=1000):
+    def __init__(self, chats=None, search_limit=1000, delete_chunk_size=100):
         self.chats = chats or []
         self.search_limit = search_limit
+        self.delete_chunk_size = delete_chunk_size
 
     @staticmethod
     def chunks(l, n):
@@ -53,7 +54,7 @@ class Cleaner:
             exit(-1)
 
         self.chats = groups if n == len(groups) + 1 else [groups[n - 1]]
- 
+
         print(f'\nSelected {", ".join(c.title for c in self.chats)}.\n')
 
     def run(self):
@@ -76,11 +77,9 @@ class Cleaner:
     def delete_messages(self, chat_id, message_ids):
         print(f'Deleting {len(message_ids)} messages with message IDs:')
         print(message_ids)
-        for message_ids_chunk in self.chunks(message_ids, 100):
+        for chunk in self.chunks(message_ids, self.delete_chunk_size):
             try:
-                app.delete_messages(
-                    chat_id=chat_id,
-                    message_ids=message_ids_chunk)
+                app.delete_messages(chat_id=chat_id, message_ids=chunk)
             except FloodWait as flood_exception:
                 sleep(flood_exception.x)
 
