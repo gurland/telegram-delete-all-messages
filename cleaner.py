@@ -46,14 +46,26 @@ class Cleaner:
         print('Delete all your messages in')
         for i, group in enumerate(groups):
             print(f'  {i+1}. {group.title}')
-        print(f'  {len(groups) + 1}. (!) ALL OF THE ABOVE (!)\n')
+
+        print(
+            f'  {len(groups) + 1}. '
+            '(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)\n'
+        )
 
         n = int(input('Insert option number: '))
         if not 1 <= n <= len(groups) + 1:
             print('Invalid option selected. Exiting...')
             exit(-1)
 
-        self.chats = groups if n == len(groups) + 1 else [groups[n - 1]]
+        if n == len(groups) + 1:
+            print('\nTHIS WILL DELETE ALL YOUR MESSSAGES IN ALL GROUPS!')
+            answer = input('Please type "I understand" to proceed: ')
+            if answer.upper() != 'I UNDERSTAND':
+                print('Better safe than sorry. Aborting...')
+                exit(-1)
+            self.chats = groups
+        else:
+            self.chats = [groups[n - 1]]
 
         print(f'\nSelected {", ".join(c.title for c in self.chats)}.\n')
 
