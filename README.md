@@ -6,7 +6,7 @@ To install this script you have to download project and install requirements:
 
 ### Linux
 ```
-git clone https://github.com/borontov/telegram-delete-all-messages
+git clone https://github.com/gurland/telegram-delete-all-messages
 cd telegram-delete-all-messages
 pip install -r requirements.txt
 python cleaner.py
