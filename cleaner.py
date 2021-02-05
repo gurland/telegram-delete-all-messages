@@ -67,7 +67,8 @@ class Cleaner:
         else:
             self.chats = [groups[n - 1]]
 
-        print(f'\nSelected {", ".join(c.title for c in self.chats)}.\n')
+        groups_str = ', '.join(c.title for c in self.chats)
+        print(f'\nSelected {groups_str}.\n')
 
     def run(self):
         for chat in self.chats:
