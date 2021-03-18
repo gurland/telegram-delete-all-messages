@@ -16,9 +16,16 @@ app.start()
 
 
 class Cleaner:
-    def __init__(self, chats=None, search_limit=1000, delete_chunk_size=100):
+    def __init__(self, chats=None, search_chunk_size=100, delete_chunk_size=100):
         self.chats = chats or []
-        self.search_limit = search_limit
+        if search_chunk_size > 100:
+            # https://github.com/gurland/telegram-delete-all-messages/issues/31
+            #
+            # The issue is that pyrogram.raw.functions.messages.Search uses
+            # pagination with chunks of 100 messages. Might consider switching
+            # to search_messages, which handles pagination transparently.
+            raise ValueError('search_chunk_size > 100 not supported')
+        self.search_chunk_size = search_chunk_size
         self.delete_chunk_size = delete_chunk_size
 
     @staticmethod
@@ -81,9 +88,9 @@ class Cleaner:
                 message_ids.extend(msg.id for msg in q['messages'])
                 messages_count = len(q['messages'])
                 print(f'Found {messages_count} of your messages in "{chat.title}"')
-                if messages_count < self.search_limit:
+                if messages_count < self.search_chunk_size:
                     break
-                add_offset += self.search_limit
+                add_offset += self.search_chunk_size
 
             self.delete_messages(chat.id, message_ids)
 
@@ -107,7 +114,7 @@ class Cleaner:
                 max_date=0,
                 offset_id=0,
                 add_offset=add_offset,
-                limit=self.search_limit,
+                limit=self.search_chunk_size,
                 max_id=0,
                 min_id=0,
                 hash=0,
