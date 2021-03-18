@@ -119,7 +119,8 @@ class Cleaner:
                 min_id=0,
                 hash=0,
                 from_id=InputPeerSelf()
-            )
+            ),
+            sleep_threshold=60
         )
 
 
