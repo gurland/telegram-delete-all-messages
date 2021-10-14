@@ -42,7 +42,7 @@ class Cleaner:
         dialog_chunk = app.get_dialogs()
         while len(dialog_chunk) > 0:
             dialogs.extend(dialog_chunk)
-            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date)
+            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
 
         return [d.chat for d in dialogs]
 
