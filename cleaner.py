@@ -59,21 +59,25 @@ class Cleaner:
             '(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)\n'
         )
 
-        n = int(input('Insert option number: '))
-        if not 1 <= n <= len(groups) + 1:
-            print('Invalid option selected. Exiting...')
-            exit(-1)
+        nums_str = input('Insert option numbers (comma separated): ')
+        nums = map(lambda s: int(s.strip()), nums_str.split(','))
 
-        if n == len(groups) + 1:
-            print('\nTHIS WILL DELETE ALL YOUR MESSSAGES IN ALL GROUPS!')
-            answer = input('Please type "I understand" to proceed: ')
-            if answer.upper() != 'I UNDERSTAND':
-                print('Better safe than sorry. Aborting...')
+        for n in nums:
+            if not 1 <= n <= len(groups) + 1:
+                print('Invalid option selected. Exiting...')
                 exit(-1)
-            self.chats = groups
-        else:
-            self.chats = [groups[n - 1]]
 
+            if n == len(groups) + 1:
+                print('\nTHIS WILL DELETE ALL YOUR MESSSAGES IN ALL GROUPS!')
+                answer = input('Please type "I understand" to proceed: ')
+                if answer.upper() != 'I UNDERSTAND':
+                    print('Better safe than sorry. Aborting...')
+                    exit(-1)
+                self.chats = groups
+                break
+            else:
+                self.chats.append(groups[n - 1])
+        
         groups_str = ', '.join(c.title for c in self.chats)
         print(f'\nSelected {groups_str}.\n')
 
