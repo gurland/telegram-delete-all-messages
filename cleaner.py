@@ -46,7 +46,7 @@ class Cleaner:
 
         return [d.chat for d in dialogs]
 
-    def select_groups(self):
+    def select_groups(self, recursive=0):
         chats = self.get_all_chats()
         groups = [c for c in chats if c.type in ('group', 'supergroup')]
 
@@ -80,6 +80,9 @@ class Cleaner:
         
         groups_str = ', '.join(c.title for c in self.chats)
         print(f'\nSelected {groups_str}.\n')
+
+        if recursive == 1:
+            self.run()
 
     def run(self):
         for chat in self.chats:
