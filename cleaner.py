@@ -9,7 +9,8 @@ from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
 from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
-cachePath = os.path.abspath(os.curdir)
+cachePath = os.path.abspath(__file__)
+cachePath = os.path.dirname(cachePath)
 cachePath = os.path.join(cachePath, "cache")
 
 if os.path.exists(cachePath):
