@@ -1,5 +1,7 @@
+import os
+import json
+
 from time import sleep
-from os import getenv
 
 from pyrogram import Client
 from pyrogram.raw.functions.messages import Search
@@ -7,12 +9,26 @@ from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
 from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
+cachePath = os.path.abspath(os.curdir)
+cachePath = os.path.join(cachePath, "cache")
 
-API_ID = getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
-API_HASH = getenv('API_HASH', None) or input('Enter your Telegram API hash: ')
+if os.path.exists(cachePath):
+    with open(cachePath, "r") as cacheFile:
+        cache = json.loads(cacheFile.read())
+    
+    API_ID = cache["API_ID"]
+    API_HASH = cache["API_HASH"]
+else:
+    API_ID = os.getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
+    API_HASH = os.getenv('API_HASH', None) or input('Enter your Telegram API hash: ')
 
 app = Client("client", api_id=API_ID, api_hash=API_HASH)
 app.start()
+
+if not os.path.exists(cachePath):
+    with open(cachePath, "w") as cacheFile:
+        cache = {"API_ID": API_ID, "API_HASH": API_HASH}
+        cacheFile.write(json.dumps(cache))
 
 
 class Cleaner:
