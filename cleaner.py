@@ -1,7 +1,10 @@
+#!/usr/bin/python
+
 import os
 import json
 
 from time import sleep
+from datetime import datetime, timedelta
 
 from pyrogram import Client
 from pyrogram.raw.functions.messages import Search
@@ -9,32 +12,23 @@ from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
 from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
-cachePath = os.path.abspath(__file__)
-cachePath = os.path.dirname(cachePath)
-cachePath = os.path.join(cachePath, "cache")
+runPath = os.path.abspath(__file__)
+configPath = os.path.join(os.path.dirname(runPath), "config.json")
 
-if os.path.exists(cachePath):
-    with open(cachePath, "r") as cacheFile:
-        cache = json.loads(cacheFile.read())
-    
-    API_ID = cache["API_ID"]
-    API_HASH = cache["API_HASH"]
-else:
-    API_ID = os.getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
-    API_HASH = os.getenv('API_HASH', None) or input('Enter your Telegram API hash: ')
+API_ID = 'API_ID'
+API_HASH = 'API_HASH'
+SELECTED_GROUPS = 'SELECTED_GROUPS'
+OLDER_THAN_DAYS = 'OLDER_THAN_DAYS'
+ASSUME_YES = 'ASSUME_YES'
 
-app = Client("client", api_id=API_ID, api_hash=API_HASH)
-app.start()
-
-if not os.path.exists(cachePath):
-    with open(cachePath, "w") as cacheFile:
-        cache = {"API_ID": API_ID, "API_HASH": API_HASH}
-        cacheFile.write(json.dumps(cache))
+config = {}
+assume_yes = os.getenv(ASSUME_YES, False) == '1'  # not storing this in config
 
 
 class Cleaner:
-    def __init__(self, chats=None, search_chunk_size=100, delete_chunk_size=100):
-        self.chats = chats or []
+    def __init__(self, app, search_chunk_size=100, delete_chunk_size=100):
+        self.app = app
+        self.chats = []
         if search_chunk_size > 100:
             # https://github.com/gurland/telegram-delete-all-messages/issues/31
             #
@@ -52,58 +46,75 @@ class Cleaner:
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    @staticmethod
-    def get_all_chats():
-        dialogs = app.get_dialogs(pinned_only=True)
+    def get_all_chats(self):
+        dialogs = self.app.get_dialogs(pinned_only=True)
 
-        dialog_chunk = app.get_dialogs()
+        dialog_chunk = self.app.get_dialogs()
         while len(dialog_chunk) > 0:
             dialogs.extend(dialog_chunk)
-            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
+            dialog_chunk = self.app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
 
         return [d.chat for d in dialogs]
 
-    def select_groups(self, recursive=0):
+    def select_groups(self):
         chats = self.get_all_chats()
         groups = [c for c in chats if c.type in ('group', 'supergroup')]
 
         print('Delete all your messages in')
-        for i, group in enumerate(groups):
-            print(f'  {i+1}. {group.title}')
+        for group in groups:
+            print(f'  {group.id}) {group.title}')
 
-        print(
-            f'  {len(groups) + 1}. '
-            '(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)\n'
-        )
+        print('(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)\n')
+        selected_groups = []
+        if SELECTED_GROUPS in config and len(config[SELECTED_GROUPS]) != 0:
+            previously_selected = ', '.join(map(lambda s: str(s), config[SELECTED_GROUPS]))
+            print(f'You have previously selected: {previously_selected}')
+            if assume_yes or (input('Do you want to use the same list (YES/NO)?').upper() == 'YES'):
+                selected_groups = config[SELECTED_GROUPS]
 
-        nums_str = input('Insert option numbers (comma separated): ')
-        nums = map(lambda s: int(s.strip()), nums_str.split(','))
+        if len(selected_groups) == 0:
+            nums_str = input('Insert option numbers (comma separated): ')
+            selected_groups = list(map(lambda s: int(s.strip()), nums_str.split(',')))
+            config[SELECTED_GROUPS] = selected_groups
 
-        for n in nums:
-            if not 1 <= n <= len(groups) + 1:
-                print('Invalid option selected. Exiting...')
+        self.chats = []
+        # sanity check - do all these groups exist?
+        for chat_id in selected_groups:
+            found = False
+            for group in groups:
+                if group.id == chat_id:
+                    self.chats.append(group)
+                    found = True
+                    break
+            if not found:
+                print(f'Invalid option {chat_id} selected. Exiting...')
                 exit(-1)
 
-            if n == len(groups) + 1:
-                print('\nTHIS WILL DELETE ALL YOUR MESSSAGES IN ALL GROUPS!')
-                answer = input('Please type "I understand" to proceed: ')
-                if answer.upper() != 'I UNDERSTAND':
-                    print('Better safe than sorry. Aborting...')
-                    exit(-1)
-                self.chats = groups
-                break
-            else:
-                self.chats.append(groups[n - 1])
+        if not assume_yes and len(self.chats) == len(groups):
+            print('\nTHIS WILL DELETE ALL YOUR MESSSAGES IN ALL GROUPS!')
+            answer = input('Please type "I understand" to proceed: ')
+            if answer.upper() != 'I UNDERSTAND':
+                print('Better safe than sorry. Aborting...')
+                exit(-1)
         
         groups_str = ', '.join(c.title for c in self.chats)
         print(f'\nSelected {groups_str}.\n')
 
-        if recursive == 1:
-            self.run()
+    def time_days_ago(self, days):
+        return int((datetime.now() - timedelta(days=days)).timestamp())
+
+    def select_duration(self):
+        if OLDER_THAN_DAYS in config:
+            print(f'Delete messages older than {config[OLDER_THAN_DAYS]} days')
+            if assume_yes or input('Use this value (YES/NO)?').upper() == 'YES':
+                self.max_date = self.time_days_ago(config[OLDER_THAN_DAYS])
+                return
+        config[OLDER_THAN_DAYS] = int(input('How many last days to keep? Entering 0 deletes all: ').strip())
+        self.max_date = self.time_days_ago(config[OLDER_THAN_DAYS])
 
     def run(self):
         for chat in self.chats:
-            peer = app.resolve_peer(chat.id)
+            peer = self.app.resolve_peer(chat.id)
             message_ids = []
             add_offset = 0
 
@@ -123,19 +134,19 @@ class Cleaner:
         print(message_ids)
         for chunk in self.chunks(message_ids, self.delete_chunk_size):
             try:
-                app.delete_messages(chat_id=chat_id, message_ids=chunk)
+                self.app.delete_messages(chat_id=chat_id, message_ids=chunk)
             except FloodWait as flood_exception:
                 sleep(flood_exception.x)
 
     def search_messages(self, peer, add_offset):
         print(f'Searching messages. OFFSET: {add_offset}')
-        return app.send(
+        return self.app.send(
             Search(
                 peer=peer,
                 q='',
                 filter=InputMessagesFilterEmpty(),
                 min_date=0,
-                max_date=0,
+                max_date=self.max_date,
                 offset_id=0,
                 add_offset=add_offset,
                 limit=self.search_chunk_size,
@@ -149,12 +160,27 @@ class Cleaner:
 
 
 if __name__ == '__main__':
+    if os.path.exists(configPath):
+        with open(configPath, "r") as configFile:
+            config = json.loads(configFile.read())
+    else:
+        config[API_ID] = os.getenv(API_ID, None) or int(input('Enter your Telegram API id: '))
+        config[API_HASH] = os.getenv(API_HASH, None) or input('Enter your Telegram API hash: ')
+
+    app = Client("client", api_id=config[API_ID], api_hash=config[API_HASH])
+    app.start()
+
     try:
-        deleter = Cleaner()
+        deleter = Cleaner(app)
         deleter.select_groups()
+        deleter.select_duration()
         deleter.run()
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
     finally:
         app.stop()
+
+    print("Saving config...")
+    with open(configPath, "w") as configFile:
+        configFile.write(json.dumps(config))

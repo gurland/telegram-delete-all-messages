@@ -1,5 +1,6 @@
 ﻿venv/
 
 cache
+config.json
 client.session
 client.session-journal
