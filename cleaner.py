@@ -69,7 +69,7 @@ class Cleaner:
 
         print('Delete all your messages in')
         for i, group in enumerate(groups):
-            print(f'  {i+1}. {group.title}')
+            print(f'  {i+1}. {group.title}. Chat id is: {group.id}')
 
         print(
             f'  {len(groups) + 1}. '
@@ -150,9 +150,18 @@ class Cleaner:
 
 if __name__ == '__main__':
     try:
-        deleter = Cleaner()
-        deleter.select_groups()
-        deleter.run()
+        while True:
+                deleter = Cleaner()
+                deleter.select_groups()
+                print('Are you sure? Y/N')
+                sure = input()
+                if sure == 'Y' or sure == 'y':
+                        deleter.run()
+                print('One more time? Y/N')
+                cont = input()
+                if cont != 'Y' and cont != 'y':
+                        break
+        
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
