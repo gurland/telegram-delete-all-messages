@@ -1,2 +1,2 @@
-pyrogram==1.4
+pyrogram==2.0.106
 tgcrypto # Optional, for faster cleaning. You could remove this line

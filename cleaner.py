@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import json
@@ -46,19 +46,15 @@ class Cleaner:
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    def get_all_chats(self):
-        dialogs = self.app.get_dialogs(pinned_only=True)
+    async def get_all_chats(self):
+        dialogs = []
+        async for dialog in self.app.get_dialogs():
+            dialogs.append(dialog.chat)
+        return dialogs
 
-        dialog_chunk = self.app.get_dialogs()
-        while len(dialog_chunk) > 0:
-            dialogs.extend(dialog_chunk)
-            dialog_chunk = self.app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
-
-        return [d.chat for d in dialogs]
-
-    def select_groups(self):
-        chats = self.get_all_chats()
-        groups = [c for c in chats if c.type in ('group', 'supergroup')]
+    async def select_groups(self, recursive=0):
+        chats = await self.get_all_chats()
+        groups = [c for c in chats if c.type.name in ('GROUP, SUPERGROUP')]
 
         print('Delete all your messages in')
         for group in groups:
@@ -101,7 +97,7 @@ class Cleaner:
         print(f'\nSelected {groups_str}.\n')
 
     def time_days_ago(self, days):
-        return int((datetime.now() - timedelta(days=days)).timestamp())
+        return datetime.now() - timedelta(days=days)
 
     def select_duration(self):
         if OLDER_THAN_DAYS in config:
@@ -112,75 +108,62 @@ class Cleaner:
         config[OLDER_THAN_DAYS] = int(input('How many last days to keep? Entering 0 deletes all: ').strip())
         self.max_date = self.time_days_ago(config[OLDER_THAN_DAYS])
 
-    def run(self):
+    async def run(self):
         for chat in self.chats:
-            peer = self.app.resolve_peer(chat.id)
+            chat_id = chat.id
             message_ids = []
             add_offset = 0
 
             while True:
-                q = self.search_messages(peer, add_offset)
-                message_ids.extend(msg.id for msg in q['messages'])
-                messages_count = len(q['messages'])
-                print(f'Found {messages_count} of your messages in "{chat.title}"')
+                q = await self.search_messages(chat_id, add_offset)
+                message_ids.extend(msg.id for msg in q)
+                messages_count = len(q)
+                print(f'Found {len(message_ids)} of your messages in "{chat.title}"')
                 if messages_count < self.search_chunk_size:
                     break
                 add_offset += self.search_chunk_size
 
-            self.delete_messages(chat.id, message_ids)
+            await self.delete_messages(chat_id=chat.id, message_ids=message_ids)
 
-    def delete_messages(self, chat_id, message_ids):
+    async def delete_messages(self, chat_id, message_ids):
         print(f'Deleting {len(message_ids)} messages with message IDs:')
         print(message_ids)
         for chunk in self.chunks(message_ids, self.delete_chunk_size):
             try:
-                self.app.delete_messages(chat_id=chat_id, message_ids=chunk)
+                await self.app.delete_messages(chat_id=chat_id, message_ids=chunk)
             except FloodWait as flood_exception:
                 sleep(flood_exception.x)
 
-    def search_messages(self, peer, add_offset):
+    async def search_messages(self, chat_id, add_offset):
+        messages = []
         print(f'Searching messages. OFFSET: {add_offset}')
-        return self.app.send(
-            Search(
-                peer=peer,
-                q='',
-                filter=InputMessagesFilterEmpty(),
-                min_date=0,
-                max_date=self.max_date,
-                offset_id=0,
-                add_offset=add_offset,
-                limit=self.search_chunk_size,
-                max_id=0,
-                min_id=0,
-                hash=0,
-                from_id=InputPeerSelf()
-            ),
-            sleep_threshold=60
-        )
+        async for message in self.app.search_messages(chat_id=chat_id, offset=add_offset, from_user="me", limit=self.search_chunk_size):
+            if message.date < self.max_date:
+                messages.append(message)
+        return messages
 
-
-if __name__ == '__main__':
-    if os.path.exists(configPath):
-        with open(configPath, "r") as configFile:
-            config = json.loads(configFile.read())
-    else:
-        config[API_ID] = os.getenv(API_ID, None) or int(input('Enter your Telegram API id: '))
-        config[API_HASH] = os.getenv(API_HASH, None) or input('Enter your Telegram API hash: ')
-
-    app = Client("client", api_id=config[API_ID], api_hash=config[API_HASH])
-    app.start()
-
+async def main():
     try:
         deleter = Cleaner(app)
-        deleter.select_groups()
         deleter.select_duration()
-        deleter.run()
+        await deleter.select_groups()
+        await deleter.run()
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
-    finally:
-        app.stop()
 
     print("Saving config...")
     with open(configPath, "w") as configFile:
         configFile.write(json.dumps(config))
+
+
+if os.path.exists(configPath):
+    with open(configPath, "r") as configFile:
+        config = json.loads(configFile.read())
+else:
+    config[API_ID] = os.getenv(API_ID, None) or int(input('Enter your Telegram API id: '))
+    config[API_HASH] = os.getenv(API_HASH, None) or input('Enter your Telegram API hash: ')
+
+app = Client("client", api_id=config[API_ID], api_hash=config[API_HASH])
+app.start()
+app.run(main())
