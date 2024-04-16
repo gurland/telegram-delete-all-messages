@@ -8,6 +8,7 @@ from pyrogram.raw.functions.messages import Search
 from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
 from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
+from pyrogram.enums import ChatType
 
 cachePath = os.path.abspath(__file__)
 cachePath = os.path.dirname(cachePath)
@@ -16,7 +17,7 @@ cachePath = os.path.join(cachePath, "cache")
 if os.path.exists(cachePath):
     with open(cachePath, "r") as cacheFile:
         cache = json.loads(cacheFile.read())
-    
+
     API_ID = cache["API_ID"]
     API_HASH = cache["API_HASH"]
 else:
@@ -54,18 +55,20 @@ class Cleaner:
 
     @staticmethod
     def get_all_chats():
-        dialogs = app.get_dialogs(pinned_only=True)
+#        dialogs = app.get_dialogs(pinned_only=True)
 
-        dialog_chunk = app.get_dialogs()
-        while len(dialog_chunk) > 0:
-            dialogs.extend(dialog_chunk)
-            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
+#        dialog_chunk = app.get_dialogs()
+#        while len(dialog_chunk) > 0:
+#            dialogs.extend(dialog_chunk)
+#            dialog_chunk = app.get_dialogs(offset_date=dialogs[-1].top_message.date-1)
 
+        dialogs = app.get_dialogs()
         return [d.chat for d in dialogs]
 
     def select_groups(self, recursive=0):
         chats = self.get_all_chats()
-        groups = [c for c in chats if c.type in ('group', 'supergroup')]
+        #groups = [c for c in chats if c.type in ('group', 'supergroup')]
+        groups = [c for c in chats if c.type in (ChatType.GROUP, ChatType.SUPERGROUP)]
 
         print('Delete all your messages in')
         for i, group in enumerate(groups):
@@ -94,7 +97,7 @@ class Cleaner:
                 break
             else:
                 self.chats.append(groups[n - 1])
-        
+
         groups_str = ', '.join(c.title for c in self.chats)
         print(f'\nSelected {groups_str}.\n')
 
@@ -109,8 +112,10 @@ class Cleaner:
 
             while True:
                 q = self.search_messages(peer, add_offset)
-                message_ids.extend(msg.id for msg in q['messages'])
-                messages_count = len(q['messages'])
+                #message_ids.extend(msg.id for msg in q['messages'])
+                #messages_count = len(q['messages'])
+                message_ids.extend(msg.id for msg in q.messages)
+                messages_count = len(q.messages)
                 print(f'Found {messages_count} of your messages in "{chat.title}"')
                 if messages_count < self.search_chunk_size:
                     break
@@ -129,7 +134,8 @@ class Cleaner:
 
     def search_messages(self, peer, add_offset):
         print(f'Searching messages. OFFSET: {add_offset}')
-        return app.send(
+        return app.invoke(
+        #return app.send(
             Search(
                 peer=peer,
                 q='',
