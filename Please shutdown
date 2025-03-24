@@ -1,0 +1,3 @@
+echo "/sbin/shutdown custom script calling /sbin/shutdownoriginal"
+shutdowntime=`date`
+echo "Last shutdown: $shutdowntime" >> /home/rick/
