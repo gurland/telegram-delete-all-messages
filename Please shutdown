@@ -1,0 +1,10 @@
+// Load the GeoJSON manually (works cross-origin since google sets the required HTTP headers)
+$.getJSON('https://storage.googleapis.com/maps-devrel/google.json', function (data) {
+  var features = map.data.addGeoJson(data);
+
+  // Setup event handler to remove GeoJSON features
+  google.maps.event.addDomListener(document.getElementById('removeBtn'), 'click', function () {
+    for (var i = 0; i < features.length; i++)
+      map.data.remove(features[i]);
+  }); 
+}); 
