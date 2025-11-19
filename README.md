@@ -18,6 +18,28 @@ python cleaner.py
 - Run install.bat
 - Run start.bat
 
+## Running with Nix
+
+You can build and run this tool using Nix. Examples below assume you are in the repository root.
+
+With flakes (if enabled)
+```
+nix run .#telegram-delete-all-messages
+```
+
+Without flakes
+```
+nix-build default.nix
+./result/bin/telegram-delete-all-messages
+```
+
+Writable session/cache directory
+- When running from Nix, set a writable cache/session directory to avoid writes to the read-only Nix store:
+  ```
+  export TELEGRAM_DELETE_CACHE="$HOME/.cache/telegram-delete-all-messages"
+  nix run .#telegram-delete-all-messages
+  ```
+
 ## Obtain standalone telegram app API credentials
 - Login to https://my.telegram.org/
 - Select `API development tools` link
@@ -81,3 +103,9 @@ To make any changes in our codebase, please do the following:
 6. If everything is OK your contribution gets approved.
 
 Note: it's very important to keep PRs brief and clear. Resolve single issue by a single PR.
+
+## License
+
+This project is distributed under the GNU General Public License v3.0 (GPL-3.0-only). See the included LICENSE file for the full text.
+
+For packaging (nix/nixpkgs) the SPDX identifier used in this repository is: GPL-3.0-only
