@@ -103,6 +103,8 @@ Note: it's very important to keep PRs brief and clear. Resolve single issue by a
 ### `pip install -r requirements.txt` doesn't work
 
 Typical to Debian/Ubuntu, use isolated environment's (already provided in `pythonenv`) pip & python as such, in the repository directory:
+> [!IMPORTANT]
+> Make sure, you have `python3-full` apt package installed.
 
 ```
 # temporarily make current shell use isolated environment's python binaries
