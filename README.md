@@ -76,7 +76,7 @@ To make any changes in our codebase, please do the following:
 1. Create or find an Issue describing what needs to be done.
 2. Discuss all changes needed.
 3. Fork repository, clone it, create branch with briefly descriptive name of feature/bufix you are adding, e.g. `git checkout -b fix-sleep-treshold`.
-4. Create Pull Request. Please, test all changes before creating PR and explicitly declare whether testing was succesful or not.
+4. Create Pull Request. Please, test all changes before creating PR and explicitly declare whether testing was successful or not.
 5. Wait untill available contributors review changes.
 6. If everything is OK your contribution gets approved.
 
