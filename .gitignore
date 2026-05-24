@@ -1,4 +1,5 @@
 ﻿venv/
+.venv/
 
 cache
 client.session
