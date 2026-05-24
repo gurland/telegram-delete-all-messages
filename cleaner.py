@@ -4,9 +4,6 @@ import json
 from time import sleep
 
 from pyrogram import Client
-from pyrogram.raw.functions.messages import Search
-from pyrogram.raw.types import InputPeerSelf, InputMessagesFilterEmpty
-from pyrogram.raw.types.messages import ChannelMessages
 from pyrogram.errors import FloodWait, UnknownError
 
 cachePath = os.path.abspath(__file__)
@@ -34,13 +31,6 @@ if not os.path.exists(cachePath):
 class Cleaner:
     def __init__(self, chats=None, search_chunk_size=100, delete_chunk_size=100):
         self.chats = chats or []
-        if search_chunk_size > 100:
-            # https://github.com/gurland/telegram-delete-all-messages/issues/31
-            #
-            # The issue is that pyrogram.raw.functions.messages.Search uses
-            # pagination with chunks of 100 messages. Might consider switching
-            # to search_messages, which handles pagination transparently.
-            raise ValueError('search_chunk_size > 100 not supported')
         self.search_chunk_size = search_chunk_size
         self.delete_chunk_size = delete_chunk_size
 
