@@ -1,2 +1,3 @@
 tgcrypto # Optional, for faster cleaning. You could remove this line
-pyrotgfork==2.2.24
+pyrotgfork
+qrcode
