@@ -1,12 +1,12 @@
 import os
 import json
 
-from time import sleep
+from asyncio import sleep
 
-from pyrogram import Client, enums
+from pyrogram import Client, enums, raw
 from pyrogram.errors import FloodWait, UnknownError
 
-from qr_auth import complete_client_startup, login_with_qr
+from qr_auth import login_with_qr
 
 cachePath = os.path.abspath(__file__)
 cachePath = os.path.dirname(cachePath)
@@ -66,6 +66,19 @@ class Cleaner:
     def _is_group_chat(chat):
         return chat.type in (enums.ChatType.GROUP, enums.ChatType.SUPERGROUP)
 
+    @staticmethod
+    async def get_linked_chat(channel):
+        """Return the discussion group attached to a channel, if there is one."""
+        for attempt in range(2):
+            try:
+                return (await app.get_chat(channel.id)).linked_chat
+            except FloodWait as flood_exception:
+                if attempt:
+                    return None
+                await sleep(flood_exception.value)
+            except Exception:
+                return None
+
     async def get_groups(self):
         chats = await self.get_all_chats()
         groups_by_id = {}
@@ -80,24 +93,10 @@ class Cleaner:
             print(f'Scanning {len(channels)} channels for linked discussion groups...')
 
         for channel in channels:
-            try:
-                full_channel = await app.get_chat(channel.id)
-                linked = full_channel.linked_chat
-                if linked and self._is_group_chat(linked):
-                    groups_by_id[linked.id] = linked
-                    discussion_parents[linked.id] = channel
-            except FloodWait as flood_exception:
-                sleep(flood_exception.value)
-                try:
-                    full_channel = await app.get_chat(channel.id)
-                    linked = full_channel.linked_chat
-                    if linked and self._is_group_chat(linked):
-                        groups_by_id[linked.id] = linked
-                        discussion_parents[linked.id] = channel
-                except Exception:
-                    continue
-            except Exception:
-                continue
+            linked = await self.get_linked_chat(channel)
+            if linked and self._is_group_chat(linked):
+                groups_by_id[linked.id] = linked
+                discussion_parents[linked.id] = channel
 
         groups = sorted(
             groups_by_id.values(),
@@ -172,24 +171,55 @@ class Cleaner:
         print(f'Deleting {len(message_ids)} messages with message IDs:')
         print(message_ids)
         for chunk in self.chunks(message_ids, self.delete_chunk_size):
-            try:
-                await app.delete_messages(chat_id=chat_id, message_ids=chunk, revoke=True)
-            except FloodWait as flood_exception:
-                sleep(flood_exception.x)
+            while True:
+                try:
+                    await app.delete_messages(chat_id=chat_id, message_ids=chunk, revoke=True)
+                except FloodWait as flood_exception:
+                    # Wait out the limit and retry, otherwise the chunk stays undeleted.
+                    print(f'Flood limit reached, waiting {flood_exception.value} seconds...')
+                    await sleep(flood_exception.value)
+                else:
+                    break
 
     async def search_messages(self, chat_id, add_offset):
         messages = []
         print(f'Searching messages. OFFSET: {add_offset}')
-        async for message in app.search_messages(chat_id=chat_id, offset=add_offset, from_user="me", limit=100):
+        async for message in app.search_messages(chat_id=chat_id, offset=add_offset, from_user="me",
+                                                 limit=self.search_chunk_size):
             messages.append(message)
         return messages
 
 
+def select_login_method():
+    print('\nHow do you want to log in?')
+    print('  1. Phone number and confirmation code')
+    print('  2. QR code')
+
+    while True:
+        choice = input('Insert option number [1]: ').strip() or '1'
+        if choice in ('1', '2'):
+            return choice
+        print('Invalid option selected. Try again.')
+
+
 async def ensure_logged_in():
+    """Connect the client, authorizing it first if there is no session yet."""
     is_authorized = await app.connect()
+
     if not is_authorized:
-        await login_with_qr(app, API_ID, API_HASH)
-    await complete_client_startup(app)
+        if select_login_method() == '2':
+            # QR login needs the dispatcher running to be notified about the scan,
+            # so the client gets initialized before instead of after authorization.
+            await app.initialize()
+            await login_with_qr(app)
+        else:
+            await app.authorize()
+
+    await app.invoke(raw.functions.updates.GetState())
+    app.me = await app.get_me()
+
+    if not app.is_initialized:
+        await app.initialize()
 
 
 async def main():
@@ -202,8 +232,10 @@ async def main():
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
     finally:
-        if app.is_connected:
+        if app.is_initialized:
             await app.stop()
+        elif app.is_connected:
+            await app.disconnect()
 
 
 app.run(main())
