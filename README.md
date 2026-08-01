@@ -91,9 +91,27 @@ Delete all your messages in
   2. Python community (@pythoncommunity)
   3. Rust Beginners [discussion of @rustlang]
   4. (!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)
+  5. Enter a chat id or @username by hand (for groups you have left)
 
 Insert option numbers (comma separated):
 ```
+
+#### Groups that are not in the list
+A group you have left has no dialog entry, so it cannot be listed. Pick the last
+option to name it directly, by chat id or by @username:
+```
+Insert option numbers (comma separated): 5
+
+Enter a chat id (like -1001234567890) or a @username, one per line.
+Press Enter on an empty line when you are done.
+  Chat id or @username: @pythoncommunity
+  Added Python community (@pythoncommunity).
+  Chat id or @username:
+```
+This works for public groups and for any group your account can still open.
+It does not work for a private group you have fully left: Telegram answers
+`CHANNEL_PRIVATE` and refuses to let a non-member touch it, which no client can
+work around. The error is printed and you can carry on entering other chats.
 
 #### Message removal process
 - After choosing supergroup you would get informed about messages removal process
