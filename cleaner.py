@@ -43,14 +43,16 @@ class Cleaner:
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    @staticmethod
-    def _format_chat_title(chat, parent_channel=None):
+    @classmethod
+    def _format_chat_title(cls, chat, parent_channel=None):
         title = chat.title or 'Unknown'
         if chat.username:
             title = f'{title} (@{chat.username})'
         if parent_channel:
             parent = f'@{parent_channel.username}' if parent_channel.username else parent_channel.title
             title = f'{title} [discussion of {parent}]'
+        if cls._migrated_to_supergroup(chat):
+            title = f'{title} [pre-migration history]'
         return title
 
     @staticmethod
@@ -65,6 +67,17 @@ class Cleaner:
     @staticmethod
     def _is_group_chat(chat):
         return chat.type in (enums.ChatType.GROUP, enums.ChatType.SUPERGROUP)
+
+    @staticmethod
+    def _migrated_to_supergroup(chat):
+        """Whether this legacy group has been converted into a supergroup.
+
+        Both chats keep their own dialog entry and share a title, which is why
+        such a group shows up twice in the list. They are not interchangeable:
+        the legacy chat keeps the history from before the migration, and the
+        supergroup does not return it.
+        https://github.com/gurland/telegram-delete-all-messages/issues/56"""
+        return getattr(getattr(chat, '_raw', None), 'migrated_to', None) is not None
 
     @staticmethod
     async def get_linked_chat(channel):
