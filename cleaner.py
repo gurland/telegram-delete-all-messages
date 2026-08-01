@@ -104,8 +104,47 @@ class Cleaner:
         )
         return groups, discussion_parents
 
+    @staticmethod
+    async def resolve_chat(reference):
+        """Look up a chat by id or @username instead of picking it from the list."""
+        try:
+            reference = int(reference)
+        except ValueError:
+            pass
+        return await app.get_chat(reference)
+
+    async def enter_chats_manually(self):
+        """Ask for groups that are missing from the dialog list, e.g. left ones.
+
+        https://github.com/gurland/telegram-delete-all-messages/issues/48"""
+        print(
+            '\nEnter a chat id (like -1001234567890) or a @username, one per line.\n'
+            'Press Enter on an empty line when you are done.'
+        )
+
+        chats = []
+        while True:
+            reference = input('  Chat id or @username: ').strip()
+            if not reference:
+                return chats
+
+            try:
+                chat = await self.resolve_chat(reference)
+            except Exception as e:
+                print(f'  Could not open "{reference}": {e}')
+                continue
+
+            if not self._is_group_chat(chat):
+                print(f'  "{self._format_chat_title(chat)}" is not a group, skipping.')
+                continue
+
+            print(f'  Added {self._format_chat_title(chat)}.')
+            chats.append(chat)
+
     async def select_groups(self, recursive=0):
         groups, discussion_parents = await self.get_groups()
+        delete_all_option = len(groups) + 1
+        manual_option = len(groups) + 2
 
         print('Delete all your messages in')
         print(
@@ -115,20 +154,21 @@ class Cleaner:
         for i, group in enumerate(groups):
             print(f'  {i+1}. {self._format_chat_title(group, discussion_parents.get(group.id))}')
 
+        print(f'  {delete_all_option}. (!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)')
         print(
-            f'  {len(groups) + 1}. '
-            '(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)\n'
+            f'  {manual_option}. Enter a chat id or @username by hand '
+            '(for groups you have left)\n'
         )
 
         nums_str = input('Insert option numbers (comma separated): ')
         nums = map(lambda s: int(s.strip()), nums_str.split(','))
 
         for n in nums:
-            if not 1 <= n <= len(groups) + 1:
+            if not 1 <= n <= manual_option:
                 print('Invalid option selected. Exiting...')
                 exit(-1)
 
-            if n == len(groups) + 1:
+            if n == delete_all_option:
                 print('\nTHIS WILL DELETE ALL YOUR MESSAGES IN ALL GROUPS!')
                 answer = input('Please type "I understand" to proceed: ')
                 if answer.upper() != 'I UNDERSTAND':
@@ -136,9 +176,18 @@ class Cleaner:
                     exit(-1)
                 self.chats = groups
                 break
+            elif n == manual_option:
+                self.chats.extend(await self.enter_chats_manually())
             else:
                 self.chats.append(groups[n - 1])
-        
+
+        # A chat entered by hand may also be one that was picked from the list.
+        self.chats = list({chat.id: chat for chat in self.chats}.values())
+
+        if not self.chats:
+            print('No chats selected. Exiting...')
+            exit(-1)
+
         groups_str = ', '.join(
             self._format_chat_title(c, discussion_parents.get(c.id)) for c in self.chats
         )
