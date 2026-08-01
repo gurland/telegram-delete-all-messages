@@ -33,41 +33,77 @@ You could set API_ID and API_HASH environment variables to prevent entering API 
 #### Start
 After starting script you will be prompted:
 - To enter your Telegram APP credentials (if no environment variables found)
+- To pick a login method, phone number is the default one
 - Your account phone and then code sent to you by Telegram
 ```
 $ python cleaner.py
 
 Enter your Telegram API id: 123456
 Enter your Telegram API hash: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Pyrogram v0.14.1, Copyright (C) 2017-2019 Dan <https://github.com/delivrance>
-Licensed under the terms of the GNU Lesser General Public License v3 or later (LGPLv3+)
 
-Enter phone number: +123456789012
+How do you want to log in?
+  1. Phone number and confirmation code
+  2. QR code
+Insert option number [1]:
+
+Welcome to Pyrogram (version 2.2.24)
+Pyrogram is free software and comes with ABSOLUTELY NO WARRANTY. Licensed
+under the terms of the GNU Lesser General Public License v3 or later (LGPLv3+).
+
+Enter phone number or bot token: +123456789012
 Is "+123456789012" correct? (y/n): y
-Enter phone code: 88988
+Enter confirmation code: 88988
 Logged in successfully as Stanislav
 ```
+The login method is only asked once, on the very first run. Afterwards the saved
+session is reused and you go straight to picking groups.
+
+#### Log in with a QR code
+If Telegram never delivers the confirmation code to you, pick option `2` instead. The script
+prints a QR code in your terminal and regenerates it every 25 seconds until it is scanned.
+On your phone, go to `Settings -> Devices -> Link Desktop Device` and scan it.
+```
+Insert option number [1]: 2
+
+Log in with QR code
+On your phone: Settings -> Devices -> Link Desktop Device
+Scan the code below (it is regenerated every 25 seconds)
+
+    ▄▄▄▄▄▄▄ ▄  ▄▄▄▄ ▄▄▄▄▄▄▄
+    █ ▄▄▄ █ ██▀ ▄█▀ █ ▄▄▄ █
+    █ ███ █ ▀█▄▀▄▄▄ █ ███ █
+    ▀▀▀▀▀▀▀ ▀ ▀ ▀ ▀ ▀▀▀▀▀▀▀
+
+Logged in as Stanislav
+```
+If your account has two-step verification enabled, you will be asked for the password
+after scanning.
 
 #### Choosing supergroup
 - After providing needed information you will get your supergroup dialogs
-- Enter number found near desired supergroup title
+- Archived chats and the discussion groups attached to channels you follow are listed too
+- Enter numbers found near desired supergroup titles (comma separated)
 ```
-1. Python community
-2. Rust Beginners
-3. IDE & Editors
+Delete all your messages in
+  (3 groups found, including archived chats and channel discussions)
 
-Insert group number:
+  1. IDE & Editors
+  2. Python community (@pythoncommunity)
+  3. Rust Beginners [discussion of @rustlang]
+  4. (!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)
+
+Insert option numbers (comma separated):
 ```
 
 #### Message removal process
 - After choosing supergroup you would get informed about messages removal process
 ```
-Insert group number: 2
-Selected Rust Beginners
+Insert option numbers (comma separated): 3
+Selected Rust Beginners [discussion of @rustlang].
 
 Searching messages. OFFSET: 0
-Found 4 your messages in selected supergroup
-Deleting 4 messages with next message IDs:
+Found 4 of your messages in "Rust Beginners"
+Deleting 4 messages with message IDs:
 [23807, 23799, 23757, 23756]
 ```
 
