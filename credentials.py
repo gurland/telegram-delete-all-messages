@@ -6,14 +6,30 @@ def _read_cache(cache_path):
     if not os.path.exists(cache_path):
         return {}
 
-    with open(cache_path, 'r') as cache_file:
-        return json.load(cache_file)
+    try:
+        with open(cache_path, 'r') as cache_file:
+            cache = json.load(cache_file)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # A legacy write may have been interrupted after API_HASH reached disk.
+        # Overwrite the unreadable payload before requesting any credentials.
+        _write_cache(cache_path, {})
+        return {}
+
+    if not isinstance(cache, dict):
+        _write_cache(cache_path, {})
+        return {}
+
+    return cache
+
+
+def _write_cache(cache_path, cache):
+    with open(cache_path, 'w') as cache_file:
+        json.dump(cache, cache_file)
 
 
 def _write_api_id(cache_path, api_id):
     """Persist the non-secret API ID and discard legacy cached secrets."""
-    with open(cache_path, 'w') as cache_file:
-        json.dump({'API_ID': api_id}, cache_file)
+    _write_cache(cache_path, {'API_ID': api_id})
 
 
 def load_api_credentials(cache_path):
