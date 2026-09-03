@@ -315,7 +315,8 @@ async def ensure_logged_in():
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Preview or delete all of your messages in selected Telegram groups.'
+        description='Preview or delete all of your messages in selected Telegram groups.',
+        allow_abbrev=False,
     )
     parser.add_argument(
         '--execute',

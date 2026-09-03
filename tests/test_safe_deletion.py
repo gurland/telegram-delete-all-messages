@@ -1,6 +1,10 @@
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -8,7 +12,7 @@ from unittest.mock import AsyncMock, patch
 os.environ.setdefault('API_ID', '12345')
 os.environ.setdefault('API_HASH', 'test-api-hash')
 
-from cleaner import Cleaner
+from cleaner import Cleaner, parse_args
 
 
 class SafeDeletionTests(unittest.IsolatedAsyncioTestCase):
@@ -44,6 +48,48 @@ class SafeDeletionTests(unittest.IsolatedAsyncioTestCase):
             chat_id=-100123,
             message_ids=[10, 20],
         )
+
+
+class ExecuteArgumentTests(unittest.TestCase):
+    def test_execute_option_cannot_be_abbreviated(self):
+        with patch.object(sys, 'argv', ['cleaner.py', '--e']):
+            with redirect_stderr(StringIO()):
+                with self.assertRaises(SystemExit) as exit_context:
+                    parse_args()
+
+        self.assertEqual(2, exit_context.exception.code)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows batch launcher test')
+    def test_windows_launcher_forwards_execute_argument(self):
+        project_root = os.path.dirname(os.path.dirname(__file__))
+
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = os.path.join(directory, 'start.bat')
+            shutil.copy2(os.path.join(project_root, 'start.bat'), launcher)
+
+            scripts = os.path.join(directory, 'venv', 'Scripts')
+            os.makedirs(scripts)
+            with open(os.path.join(scripts, 'activate.bat'), 'w') as activate:
+                activate.write('@set PATH=%~dp0;%PATH%\n')
+            with open(os.path.join(scripts, 'python.bat'), 'w') as python:
+                python.write('@echo %*>"%CAPTURE_FILE%"\n')
+            with open(os.path.join(scripts, 'deactivate.bat'), 'w') as deactivate:
+                deactivate.write('@echo off\n')
+
+            capture_file = os.path.join(directory, 'arguments.txt')
+            environment = os.environ.copy()
+            environment['CAPTURE_FILE'] = capture_file
+            subprocess.run(
+                ['cmd', '/c', launcher, '--execute'],
+                check=True,
+                capture_output=True,
+                env=environment,
+                text=True,
+            )
+
+            with open(capture_file, 'r') as captured:
+                arguments = captured.read().strip()
+            self.assertTrue(arguments.endswith('cleaner.py --execute'), arguments)
 
 
 if __name__ == '__main__':
