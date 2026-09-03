@@ -7,12 +7,13 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, mock_open, patch
 
 os.environ.setdefault('API_ID', '12345')
 os.environ.setdefault('API_HASH', 'test-api-hash')
 
-from cleaner import Cleaner, parse_args
+with patch('os.path.exists', return_value=False), patch('builtins.open', mock_open()):
+    from cleaner import Cleaner, parse_args
 
 
 class SafeDeletionTests(unittest.IsolatedAsyncioTestCase):
@@ -35,10 +36,13 @@ class SafeDeletionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('Dry run complete. 2 messages would be deleted.', output.getvalue())
 
     async def test_execute_requires_exact_final_confirmation(self):
-        with patch('builtins.input', return_value='no'):
-            await self.cleaner.run(execute=True)
+        for answer in ('no', 'delete', ' DELETE', 'DELETE '):
+            with self.subTest(answer=answer):
+                self.cleaner.delete_messages.reset_mock()
+                with patch('builtins.input', return_value=answer):
+                    await self.cleaner.run(execute=True)
 
-        self.cleaner.delete_messages.assert_not_awaited()
+                self.cleaner.delete_messages.assert_not_awaited()
 
     async def test_execute_deletes_only_after_confirmation(self):
         with patch('builtins.input', return_value='DELETE'):
