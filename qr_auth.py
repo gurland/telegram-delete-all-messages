@@ -16,29 +16,47 @@ def _clear_screen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def _print_ascii_qr(qr: QRCode) -> None:
-    """Render a scannable QR using only ASCII-safe terminal characters."""
+def _supports_unicode_qr(stream) -> bool:
+    """Check encoding support without relying on the stream's error policy."""
+    encoding = getattr(stream, 'encoding', None) or 'utf-8'
+    try:
+        '█▀▄'.encode(encoding)
+    except (LookupError, UnicodeEncodeError):
+        return False
+    return True
+
+
+def _print_ascii_qr(qr: QRCode, invert=False) -> None:
+    """Render a QR using only ASCII-safe terminal characters."""
+    dark, light = (('  ', '##') if invert else ('##', '  '))
     for row in qr.get_matrix():
-        print(''.join('##' if module else '  ' for module in row))
+        print(''.join(dark if module else light for module in row))
+
+
+def _print_ascii_fallback(qr: QRCode) -> None:
+    print('ASCII QR for terminals with a light background:')
+    _print_ascii_qr(qr)
+    print('\nASCII QR for terminals with a dark background:')
+    _print_ascii_qr(qr, invert=True)
 
 
 def _print_qr(token: bytes) -> None:
     encoded = urlsafe_b64encode(token).decode("utf-8").rstrip("=")
     login_url = f"tg://login?token={encoded}"
 
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
-
     qr = QRCode(border=1)
     qr.add_data(login_url)
+
+    if not _supports_unicode_qr(sys.stdout):
+        print("Terminal encoding cannot display the Unicode QR; using local ASCII versions instead:")
+        _print_ascii_fallback(qr)
+        return
+
     try:
         qr.print_ascii(invert=True)
     except (UnicodeEncodeError, UnicodeDecodeError):
-        print("Terminal cannot display the Unicode QR; using a local ASCII version instead:")
-        _print_ascii_qr(qr)
+        print("Terminal cannot display the Unicode QR; using local ASCII versions instead:")
+        _print_ascii_fallback(qr)
 
 
 async def _switch_dc(client: Client, dc_id: int) -> None:

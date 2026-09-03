@@ -1,3 +1,4 @@
+import io
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -18,10 +19,25 @@ class SafeQrFallbackTests(unittest.TestCase):
                 _print_qr(b'sensitive-login-token')
 
         rendered = output.getvalue()
-        self.assertIn('using a local ASCII version instead', rendered)
+        self.assertIn('using local ASCII versions instead', rendered)
         self.assertIn('##', rendered)
+        self.assertIn('light background', rendered)
+        self.assertIn('dark background', rendered)
         self.assertNotIn('tg://login', rendered)
         self.assertNotIn('sensitive-login-token', rendered)
+
+    def test_ascii_stream_uses_fallback_before_characters_are_replaced(self):
+        raw_output = io.BytesIO()
+        ascii_output = io.TextIOWrapper(raw_output, encoding='ascii', errors='replace')
+
+        with patch('sys.stdout', ascii_output):
+            _print_qr(b'sensitive-login-token')
+            ascii_output.flush()
+
+        rendered = raw_output.getvalue().decode('ascii')
+        self.assertIn('using local ASCII versions instead', rendered)
+        self.assertNotIn('?', rendered)
+        self.assertNotIn('tg://login', rendered)
 
 
 if __name__ == '__main__':
