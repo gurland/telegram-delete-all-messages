@@ -1,3 +1,4 @@
+import argparse
 import os
 import json
 
@@ -209,7 +210,9 @@ class Cleaner:
         if recursive == 1:
             self.run()
 
-    async def run(self):
+    async def run(self, execute=False):
+        deletion_plan = []
+
         for chat in self.chats:
             chat_id = chat.id
             message_ids = []
@@ -224,6 +227,32 @@ class Cleaner:
                     break
                 add_offset += self.search_chunk_size
 
+            deletion_plan.append((chat, message_ids))
+
+        print('\nDeletion preview:')
+        for chat, message_ids in deletion_plan:
+            print(f'  "{chat.title}" (chat ID: {chat.id}): {len(message_ids)} messages')
+
+        total_messages = sum(len(message_ids) for _, message_ids in deletion_plan)
+        if not total_messages:
+            print('No messages found. Nothing will be deleted.')
+            return
+
+        if not execute:
+            print(
+                f'\nDry run complete. {total_messages} messages would be deleted. '
+                'Re-run with --execute to continue.'
+            )
+            return
+
+        answer = input(
+            f'\nType "DELETE" to permanently delete these {total_messages} messages: '
+        )
+        if answer != 'DELETE':
+            print('Confirmation did not match. Aborting without deleting messages.')
+            return
+
+        for chat, message_ids in deletion_plan:
             await self.delete_messages(chat_id=chat.id, message_ids=message_ids)
 
     async def delete_messages(self, chat_id, message_ids):
@@ -284,12 +313,24 @@ async def ensure_logged_in():
         await app.initialize()
 
 
-async def main():
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Preview or delete all of your messages in selected Telegram groups.'
+    )
+    parser.add_argument(
+        '--execute',
+        action='store_true',
+        help='allow deletion after reviewing the preview and confirming it',
+    )
+    return parser.parse_args()
+
+
+async def main(execute=False):
     try:
         await ensure_logged_in()
         deleter = Cleaner()
         await deleter.select_groups()
-        await deleter.run()
+        await deleter.run(execute=execute)
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
@@ -300,4 +341,6 @@ async def main():
             await app.disconnect()
 
 
-app.run(main())
+if __name__ == '__main__':
+    args = parse_args()
+    app.run(main(execute=args.execute))
