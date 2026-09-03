@@ -16,6 +16,12 @@ def _clear_screen() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
+def _print_ascii_qr(qr: QRCode) -> None:
+    """Render a scannable QR using only ASCII-safe terminal characters."""
+    for row in qr.get_matrix():
+        print(''.join('##' if module else '  ' for module in row))
+
+
 def _print_qr(token: bytes) -> None:
     encoded = urlsafe_b64encode(token).decode("utf-8").rstrip("=")
     login_url = f"tg://login?token={encoded}"
@@ -31,8 +37,8 @@ def _print_qr(token: bytes) -> None:
     try:
         qr.print_ascii(invert=True)
     except (UnicodeEncodeError, UnicodeDecodeError):
-        print("Terminal cannot display QR. Open this link or paste it into a QR generator:")
-        print(login_url)
+        print("Terminal cannot display the Unicode QR; using a local ASCII version instead:")
+        _print_ascii_qr(qr)
 
 
 async def _switch_dc(client: Client, dc_id: int) -> None:

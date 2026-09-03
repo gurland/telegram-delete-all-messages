@@ -62,6 +62,9 @@ session is reused and you go straight to picking groups.
 If Telegram never delivers the confirmation code to you, pick option `2` instead. The script
 prints a QR code in your terminal and regenerates it every 25 seconds until it is scanned.
 On your phone, go to `Settings -> Devices -> Link Desktop Device` and scan it.
+If the terminal cannot display the Unicode QR, the script renders an ASCII-only
+version locally. It never prints the login token or asks you to send it to an
+external QR service.
 ```
 Insert option number [1]: 2
 
