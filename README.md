@@ -12,11 +12,26 @@ pip install -r requirements.txt
 python cleaner.py
 ```
 
+To remove your non-paid reactions from messages in selected groups without
+deleting your messages, run:
+
+```
+python cleaner.py --remove-reactions
+```
+
+The script scans the complete accessible history of each selected group, shows
+a preview, and requires the exact confirmation `REMOVE REACTIONS` before it
+changes anything. It removes only reactions chosen by the logged-in account;
+other participants' reactions are left unchanged. Telegram does not allow paid
+reactions to be retracted, so the preview reports but skips them.
+
 ### Windows
 - Download zip file from this repo and unpack it
 - Install latest [CPython 3](https://www.python.org) version
 - Run install.bat
 - Run start.bat
+
+For reaction removal, run `start.bat --remove-reactions` from Command Prompt.
 
 ## Obtain standalone telegram app API credentials
 - Login to https://my.telegram.org/
@@ -123,6 +138,27 @@ Searching messages. OFFSET: 0
 Found 4 of your messages in "Rust Beginners"
 Deleting 4 messages with message IDs:
 [23807, 23799, 23757, 23756]
+```
+
+#### Reaction removal process
+
+Use `--remove-reactions` to scan the selected groups for reactions chosen by
+your account. Because Telegram does not provide a global "messages I reacted
+to" filter, large group histories can take time to scan.
+
+```
+$ python cleaner.py --remove-reactions
+
+Selected Rust Beginners [discussion of @rustlang].
+
+Searching for your reactions in "Rust Beginners"...
+Scanned 1200 messages and found 4 messages with removable reactions.
+
+Reaction removal preview:
+  "Rust Beginners" (chat ID: -1001234567890): 4 messages with removable reactions
+
+Type "REMOVE REACTIONS" to retract reactions from 4 messages: REMOVE REACTIONS
+Removed reactions from 4 messages.
 ```
 
 ## Contribution

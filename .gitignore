@@ -3,3 +3,4 @@
 cache
 client.session
 client.session-journal
+__pycache__/

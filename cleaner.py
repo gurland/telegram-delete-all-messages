@@ -1,3 +1,4 @@
+import argparse
 import os
 import json
 
@@ -33,6 +34,8 @@ if not os.path.exists(cachePath):
 
 
 class Cleaner:
+    reaction_batch_size = 100
+
     def __init__(self, chats=None, search_chunk_size=100, delete_chunk_size=100):
         self.chats = chats or []
         self.search_chunk_size = search_chunk_size
@@ -156,12 +159,15 @@ class Cleaner:
             print(f'  Added {self._format_chat_title(chat)}.')
             chats.append(chat)
 
-    async def select_groups(self, recursive=0):
+    async def select_groups(self, recursive=0, remove_reactions=False):
         groups, discussion_parents = await self.get_groups()
         delete_all_option = len(groups) + 1
         manual_option = len(groups) + 2
 
-        print('Delete all your messages in')
+        if remove_reactions:
+            print('Remove all your reactions from messages in')
+        else:
+            print('Delete all your messages in')
         print(
             f'  ({len(groups)} groups found, including archived chats '
             f'and channel discussions)\n'
@@ -169,7 +175,16 @@ class Cleaner:
         for i, group in enumerate(groups):
             print(f'  {i+1}. {self._format_chat_title(group, discussion_parents.get(group.id))}')
 
-        print(f'  {delete_all_option}. (!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)')
+        if remove_reactions:
+            print(
+                f'  {delete_all_option}. '
+                '(!) REMOVE ALL YOUR REACTIONS IN ALL OF THOSE GROUPS (!)'
+            )
+        else:
+            print(
+                f'  {delete_all_option}. '
+                '(!) DELETE ALL YOUR MESSAGES IN ALL OF THOSE GROUPS (!)'
+            )
         print(
             f'  {manual_option}. Enter a chat id or @username by hand '
             '(for groups you have left)\n'
@@ -184,7 +199,10 @@ class Cleaner:
                 exit(-1)
 
             if n == delete_all_option:
-                print('\nTHIS WILL DELETE ALL YOUR MESSAGES IN ALL GROUPS!')
+                if remove_reactions:
+                    print('\nTHIS WILL REMOVE ALL YOUR REACTIONS IN ALL GROUPS!')
+                else:
+                    print('\nTHIS WILL DELETE ALL YOUR MESSAGES IN ALL GROUPS!')
                 answer = input('Please type "I understand" to proceed: ')
                 if answer.upper() != 'I UNDERSTAND':
                     print('Better safe than sorry. Aborting...')
@@ -209,9 +227,13 @@ class Cleaner:
         print(f'\nSelected {groups_str}.\n')
 
         if recursive == 1:
-            self.run()
+            await self.run(remove_reactions=remove_reactions)
 
-    async def run(self):
+    async def run(self, remove_reactions=False):
+        if remove_reactions:
+            await self.run_reaction_removal()
+            return
+
         for chat in self.chats:
             chat_id = chat.id
             message_ids = []
@@ -227,6 +249,158 @@ class Cleaner:
                 add_offset += self.search_chunk_size
 
             await self.delete_messages(chat_id=chat.id, message_ids=message_ids)
+
+    @staticmethod
+    def _chosen_reaction_kind(reaction):
+        if reaction.chosen_order is None:
+            return None
+        if isinstance(reaction.reaction, raw.types.ReactionPaid):
+            return 'paid'
+        return 'removable'
+
+    async def _invoke_with_flood_wait(self, request, action):
+        while True:
+            try:
+                return await app.invoke(request)
+            except FloodWait as flood_exception:
+                print(
+                    f'Flood limit reached while {action}, waiting '
+                    f'{flood_exception.value} seconds...'
+                )
+                await sleep(flood_exception.value)
+
+    async def get_full_reactions(self, peer, message_ids):
+        response = await self._invoke_with_flood_wait(
+            raw.functions.messages.GetMessagesReactions(
+                peer=peer,
+                id=message_ids,
+            ),
+            'checking reactions',
+        )
+        return {
+            update.msg_id: update.reactions
+            for update in getattr(response, 'updates', [])
+            if isinstance(update, raw.types.UpdateMessageReactions)
+        }
+
+    async def classify_reaction_batch(self, peer, message_ids):
+        removable_message_ids = []
+        paid_message_count = 0
+        full_reactions = await self.get_full_reactions(peer, message_ids)
+
+        for message_id in message_ids:
+            summary = full_reactions.get(message_id)
+            chosen_kinds = {
+                kind
+                for reaction in getattr(summary, 'results', [])
+                if (kind := self._chosen_reaction_kind(reaction)) is not None
+            }
+
+            if 'removable' in chosen_kinds:
+                removable_message_ids.append(message_id)
+            if 'paid' in chosen_kinds:
+                paid_message_count += 1
+
+        return removable_message_ids, paid_message_count
+
+    async def search_reactions(self, chat_id):
+        message_ids = []
+        paid_message_count = 0
+        scanned_count = 0
+        candidate_batch = []
+        peer = None
+
+        async for message in app.get_chat_history(chat_id):
+            scanned_count += 1
+            if message.reactions:
+                candidate_batch.append(message.id)
+
+            if len(candidate_batch) == self.reaction_batch_size:
+                if peer is None:
+                    peer = await app.resolve_peer(chat_id)
+                removable, paid = await self.classify_reaction_batch(
+                    peer,
+                    candidate_batch,
+                )
+                message_ids.extend(removable)
+                paid_message_count += paid
+                candidate_batch = []
+
+            if scanned_count % 1000 == 0:
+                print(f'Scanned {scanned_count} messages...')
+
+        if candidate_batch:
+            if peer is None:
+                peer = await app.resolve_peer(chat_id)
+            removable, paid = await self.classify_reaction_batch(peer, candidate_batch)
+            message_ids.extend(removable)
+            paid_message_count += paid
+
+        print(
+            f'Scanned {scanned_count} messages and found '
+            f'{len(message_ids)} messages with removable reactions.'
+        )
+        return message_ids, paid_message_count, peer
+
+    async def run_reaction_removal(self):
+        reaction_plan = []
+        total_paid_messages = 0
+
+        for chat in self.chats:
+            print(f'Searching for your reactions in "{chat.title}"...')
+            message_ids, paid_message_count, peer = await self.search_reactions(chat.id)
+            reaction_plan.append((chat, peer, message_ids))
+            total_paid_messages += paid_message_count
+
+        print('\nReaction removal preview:')
+        for chat, _, message_ids in reaction_plan:
+            print(
+                f'  "{chat.title}" (chat ID: {chat.id}): '
+                f'{len(message_ids)} messages with removable reactions'
+            )
+
+        total_messages = sum(len(message_ids) for _, _, message_ids in reaction_plan)
+        if total_paid_messages:
+            print(
+                f'  {total_paid_messages} messages also contain paid reactions, '
+                'which Telegram does not allow users to retract.'
+            )
+
+        if not total_messages:
+            print('No removable reactions found. Nothing will be changed.')
+            return
+
+        try:
+            answer = input(
+                f'\nType "REMOVE REACTIONS" to retract reactions from '
+                f'{total_messages} messages: '
+            )
+        except EOFError:
+            print('No confirmation received. Aborting without removing reactions.')
+            return
+
+        if answer != 'REMOVE REACTIONS':
+            print('Confirmation did not match. Aborting without removing reactions.')
+            return
+
+        for _, peer, message_ids in reaction_plan:
+            await self.remove_reactions(peer, message_ids)
+
+    async def remove_reactions(self, peer, message_ids):
+        if not message_ids:
+            return
+
+        for message_id in message_ids:
+            await self._invoke_with_flood_wait(
+                raw.functions.messages.SendReaction(
+                    peer=peer,
+                    msg_id=message_id,
+                    reaction=None,
+                ),
+                'removing reactions',
+            )
+
+        print(f'Removed reactions from {len(message_ids)} messages.')
 
     async def delete_messages(self, chat_id, message_ids):
         if not message_ids:
@@ -306,12 +480,25 @@ async def ensure_logged_in():
         await app.initialize()
 
 
-async def main():
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Delete your messages or remove your reactions in Telegram groups.',
+        allow_abbrev=False,
+    )
+    parser.add_argument(
+        '--remove-reactions',
+        action='store_true',
+        help='remove your non-paid reactions instead of deleting your messages',
+    )
+    return parser.parse_args()
+
+
+async def main(remove_reactions=False):
     try:
         await ensure_logged_in()
         deleter = Cleaner()
-        await deleter.select_groups()
-        await deleter.run()
+        await deleter.select_groups(remove_reactions=remove_reactions)
+        await deleter.run(remove_reactions=remove_reactions)
     except UnknownError as e:
         print(f'UnknownError occured: {e}')
         print('Probably API has changed, ask developers to update this utility')
@@ -322,4 +509,6 @@ async def main():
             await app.disconnect()
 
 
-app.run(main())
+if __name__ == '__main__':
+    args = parse_args()
+    app.run(main(remove_reactions=args.remove_reactions))
