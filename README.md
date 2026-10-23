@@ -12,6 +12,11 @@ pip install -r requirements.txt
 python cleaner.py
 ```
 
+The default mode is a dry run: it finds matching messages and prints a deletion
+preview without deleting anything. To allow deletion after reviewing the preview,
+run `python cleaner.py --execute`. The script will still require a final typed
+confirmation before it deletes any messages.
+
 ### Windows
 - Download zip file from this repo and unpack it
 - Install latest [CPython 3](https://www.python.org) version
@@ -114,13 +119,29 @@ It does not work for a private group you have fully left: Telegram answers
 work around. The error is printed and you can carry on entering other chats.
 
 #### Message removal process
-- After choosing supergroup you would get informed about messages removal process
+- After choosing a supergroup, the script searches for your messages and displays
+  a preview with the resolved chat ID and message count
+- Without `--execute`, the script stops after this non-destructive preview
+- With `--execute`, type `DELETE` at the final prompt to perform the deletion
 ```
 Insert option numbers (comma separated): 3
 Selected Rust Beginners [discussion of @rustlang].
 
 Searching messages. OFFSET: 0
 Found 4 of your messages in "Rust Beginners"
+
+Deletion preview:
+  "Rust Beginners" (chat ID: -1001234567890): 4 messages
+
+Dry run complete. 4 messages would be deleted. Re-run with --execute to continue.
+```
+
+Execution mode adds the final confirmation:
+```
+$ python cleaner.py --execute
+
+...
+Type "DELETE" to permanently delete these 4 messages: DELETE
 Deleting 4 messages with message IDs:
 [23807, 23799, 23757, 23756]
 ```
