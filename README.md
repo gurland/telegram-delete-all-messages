@@ -30,6 +30,11 @@ python cleaner.py
 #### Environment variables
 You could set API_ID and API_HASH environment variables to prevent entering API credentials manually.
 
+The local `cache` file stores only the non-secret API ID. The API hash is never
+written to disk by this script, so it must be supplied through `API_HASH` or
+entered on each run. On the first run after upgrading, any API hash saved by an
+older version is automatically removed from the cache.
+
 #### Start
 After starting script you will be prompted:
 - To enter your Telegram APP credentials (if no environment variables found)

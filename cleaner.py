@@ -1,5 +1,4 @@
 import os
-import json
 
 from asyncio import sleep
 
@@ -8,28 +7,16 @@ from pyrogram.errors import (
     AuthKeyInvalid, AuthKeyUnregistered, FloodWait, SessionExpired, SessionRevoked, UnknownError,
 )
 
+from credentials import load_api_credentials
 from qr_auth import login_with_qr
 
 cachePath = os.path.abspath(__file__)
 cachePath = os.path.dirname(cachePath)
 cachePath = os.path.join(cachePath, "cache")
 
-if os.path.exists(cachePath):
-    with open(cachePath, "r") as cacheFile:
-        cache = json.loads(cacheFile.read())
-    
-    API_ID = cache["API_ID"]
-    API_HASH = cache["API_HASH"]
-else:
-    API_ID = os.getenv('API_ID', None) or int(input('Enter your Telegram API id: '))
-    API_HASH = os.getenv('API_HASH', None) or input('Enter your Telegram API hash: ')
+API_ID, API_HASH = load_api_credentials(cachePath)
 
 app = Client("client", api_id=API_ID, api_hash=API_HASH)
-
-if not os.path.exists(cachePath):
-    with open(cachePath, "w") as cacheFile:
-        cache = {"API_ID": API_ID, "API_HASH": API_HASH}
-        cacheFile.write(json.dumps(cache))
 
 
 class Cleaner:
