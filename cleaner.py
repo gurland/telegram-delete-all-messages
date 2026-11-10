@@ -176,7 +176,13 @@ class Cleaner:
         )
 
         nums_str = input('Insert option numbers (comma separated): ')
-        nums = map(lambda s: int(s.strip()), nums_str.split(','))
+        nums = []
+        for chunk in nums_str.split(','):
+            try:
+                nums.append(int(chunk.strip()))
+            except ValueError:
+                print(f'Invalid option selected: {chunk.strip()!r}. Exiting...')
+                exit(-1)
 
         for n in nums:
             if not 1 <= n <= manual_option:
